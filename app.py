@@ -1,9 +1,10 @@
+import os
 from flask import Flask, redirect, url_for, session, render_template_string
 from authlib.integrations.flask_client import OAuth
-import os
+from authlib.common.security import generate_token
 
 app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY", "dev-secret")
+app.secret_key = os.environ.get("SECRET_KEY", "dev_secret")
 
 oauth = OAuth(app)
 
@@ -11,83 +12,135 @@ google = oauth.register(
     name="google",
     client_id=os.environ.get("GOOGLE_CLIENT_ID"),
     client_secret=os.environ.get("GOOGLE_CLIENT_SECRET"),
-    access_token_url="https://oauth2.googleapis.com/token",
-    authorize_url="https://accounts.google.com/o/oauth2/v2/auth",
-    api_base_url="https://openidconnect.googleapis.com/v1/",
-    client_kwargs={
-        "scope": "openid email profile"
-    },
+    server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
+    client_kwargs={"scope": "openid email profile"},
 )
 
-@app.route("/")
-def home():
-    user = session.get("user")
-    return render_template_string("""
+# =========================
+# DARK NEON TEMPLATE
+# =========================
+
+TEMPLATE = """
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="utf-8">
 <title>Neon Login</title>
 <style>
-body{
-    background:#0b0b16;
+body {
+    margin:0;
     height:100vh;
     display:flex;
     justify-content:center;
     align-items:center;
+    background:#0f0f0f;
+    font-family:Arial, sans-serif;
     color:white;
-    font-family:Arial;
+    overflow:hidden;
 }
-.box{
-    padding:50px;
+.bg {
+    position:absolute;
+    width:200%;
+    height:200%;
+    background: radial-gradient(circle at center, #111 0%, #000 70%);
+    animation: move 10s infinite linear;
+}
+@keyframes move {
+    0% {transform: rotate(0deg);}
+    100% {transform: rotate(360deg);}
+}
+.card {
+    position:relative;
+    padding:40px;
     border-radius:20px;
-    background:#14142a;
-    box-shadow:0 0 30px #00f2ff,0 0 60px #ff00ff;
+    background:rgba(20,20,20,0.8);
+    box-shadow:0 0 30px #00f0ff, 0 0 60px #ff00f0;
     text-align:center;
+    animation: fadeIn 1.2s ease;
 }
-button{
-    padding:15px 40px;
-    border-radius:30px;
-    border:none;
-    background:#00f2ff;
-    cursor:pointer;
-    font-size:16px;
+@keyframes fadeIn {
+    from {opacity:0; transform: translateY(30px);}
+    to {opacity:1; transform: translateY(0);}
+}
+.btn {
+    display:inline-block;
+    margin-top:20px;
+    padding:12px 25px;
+    border-radius:50px;
+    text-decoration:none;
+    color:white;
+    background:linear-gradient(90deg,#00f0ff,#ff00f0);
+    box-shadow:0 0 20px #00f0ff;
+    transition:0.3s;
+}
+.btn:hover {
+    transform:scale(1.1);
+    box-shadow:0 0 40px #ff00f0;
+}
+.email {
+    margin-top:15px;
+    font-size:18px;
+    color:#00f0ff;
+}
+.logout {
+    display:block;
+    margin-top:15px;
+    color:#ff4d4d;
+    text-decoration:none;
 }
 </style>
 </head>
 <body>
-<div class="box">
+<div class="bg"></div>
+<div class="card">
 {% if user %}
-<h2>Xin chào {{ user.email }}</h2>
-<a href="/logout">Đăng xuất</a>
+    <h2>✨ Welcome ✨</h2>
+    <div class="email">{{ user }}</div>
+    <a href="/logout" class="logout">Logout</a>
 {% else %}
-<h2>Đăng nhập Google</h2>
-<a href="/login"><button>Login with Google</button></a>
+    <h2>🌌 Neon Google Login</h2>
+    <a href="/login" class="btn">Login with Google</a>
 {% endif %}
 </div>
 </body>
 </html>
-""", user=user)
+"""
+
+# =========================
+# ROUTES
+# =========================
+
+@app.route("/")
+def home():
+    user = session.get("user")
+    return render_template_string(TEMPLATE, user=user)
 
 @app.route("/login")
 def login():
-    redirect_uri = url_for("authorize", _external=True)
-    return google.authorize_redirect(redirect_uri)
+    try:
+        nonce = generate_token()
+        session["nonce"] = nonce
+        redirect_uri = url_for("authorize", _external=True)
+        return google.authorize_redirect(redirect_uri, nonce=nonce)
+    except Exception as e:
+        return f"Login error: {str(e)}"
 
 @app.route("/authorize")
 def authorize():
-    token = google.authorize_access_token()
-    userinfo = google.get("userinfo").json()
-    session["user"] = userinfo
-    return redirect("/")
+    try:
+        token = google.authorize_access_token()
+        nonce = session.get("nonce")
+        user_info = google.parse_id_token(token, nonce=nonce)
+        session["user"] = user_info["email"]
+        return redirect("/")
+    except Exception as e:
+        return f"OAuth Error: {str(e)}"
 
 @app.route("/logout")
 def logout():
     session.clear()
     return redirect("/")
 
+# =========================
+
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
-
-
+    app.run(debug=True)
