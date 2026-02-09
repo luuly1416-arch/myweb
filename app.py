@@ -1,188 +1,167 @@
-import customtkinter as ctk
-from tkinter import messagebox
-import time
-import threading
+from flask import Flask, render_template_string
+import os
 
-# ========================
-# CẤU HÌNH CHUNG
-# ========================
-ctk.set_appearance_mode("dark")   # dark / light / system
-ctk.set_default_color_theme("blue")  # blue / dark-blue / green
+app = Flask(__name__)
 
-# ========================
-# APP CHÍNH
-# ========================
-class ProApp(ctk.CTk):
-    def __init__(self):
-        super().__init__()
+@app.route("/")
+def home():
+    return render_template_string("""
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Neon Pro Website</title>
 
-        self.title("🚀 Pro App - Giao Diện Xịn")
-        self.geometry("800x500")
-        self.resizable(False, False)
+<!-- Google Font -->
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
 
-        # Layout chia 2 cột
-        self.grid_columnconfigure(0, weight=1)
-        self.grid_columnconfigure(1, weight=3)
+<style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family: 'Orbitron', sans-serif;
+}
 
-        # ========================
-        # SIDEBAR
-        # ========================
-        self.sidebar = ctk.CTkFrame(self, corner_radius=0, width=200)
-        self.sidebar.grid(row=0, column=0, sticky="ns")
+body{
+    height:100vh;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    background:#0f0f1a;
+    overflow:hidden;
+}
 
-        self.logo = ctk.CTkLabel(
-            self.sidebar,
-            text="🌟 PRO APP",
-            font=ctk.CTkFont(size=20, weight="bold")
-        )
-        self.logo.pack(pady=30)
+/* Animated gradient background */
+body::before{
+    content:"";
+    position:absolute;
+    width:200%;
+    height:200%;
+    background:linear-gradient(45deg,#00f2ff,#ff00ff,#00ff88,#ff0080);
+    animation:moveBg 10s linear infinite;
+    z-index:-2;
+    opacity:0.1;
+}
 
-        self.btn_home = ctk.CTkButton(
-            self.sidebar,
-            text="🏠 Trang chủ",
-            command=self.show_home,
-            corner_radius=20
-        )
-        self.btn_home.pack(pady=10, padx=20)
+@keyframes moveBg{
+    0%{transform:translate(0,0)}
+    50%{transform:translate(-25%,-25%)}
+    100%{transform:translate(0,0)}
+}
 
-        self.btn_tool = ctk.CTkButton(
-            self.sidebar,
-            text="⚙️ Công cụ",
-            command=self.show_tool,
-            corner_radius=20
-        )
-        self.btn_tool.pack(pady=10, padx=20)
+/* Main Card */
+.card{
+    background:rgba(20,20,40,0.85);
+    padding:60px;
+    border-radius:25px;
+    text-align:center;
+    backdrop-filter:blur(15px);
+    border:1px solid rgba(0,255,255,0.3);
+    box-shadow:
+        0 0 15px #00f2ff,
+        0 0 30px #ff00ff,
+        inset 0 0 15px #00ffcc;
+    animation:fadeIn 1.5s ease;
+}
 
-        self.btn_exit = ctk.CTkButton(
-            self.sidebar,
-            text="❌ Thoát",
-            fg_color="red",
-            hover_color="#aa0000",
-            command=self.quit,
-            corner_radius=20
-        )
-        self.btn_exit.pack(side="bottom", pady=20, padx=20)
+@keyframes fadeIn{
+    from{opacity:0; transform:scale(0.8);}
+    to{opacity:1; transform:scale(1);}
+}
 
-        # ========================
-        # MAIN FRAME
-        # ========================
-        self.main_frame = ctk.CTkFrame(self, corner_radius=20)
-        self.main_frame.grid(row=0, column=1, padx=20, pady=20, sticky="nsew")
+h1{
+    font-size:40px;
+    color:#00f2ff;
+    text-shadow:
+        0 0 5px #00f2ff,
+        0 0 10px #00f2ff,
+        0 0 20px #ff00ff;
+    margin-bottom:20px;
+    animation:glowText 2s infinite alternate;
+}
 
-        self.create_home_ui()
-        self.update_clock()
+@keyframes glowText{
+    from{text-shadow:0 0 5px #00f2ff,0 0 10px #ff00ff;}
+    to{text-shadow:0 0 20px #00f2ff,0 0 40px #ff00ff;}
+}
 
-    # ========================
-    # TRANG CHỦ
-    # ========================
-    def create_home_ui(self):
-        for widget in self.main_frame.winfo_children():
-            widget.destroy()
+p{
+    color:#aaa;
+    margin-bottom:30px;
+}
 
-        title = ctk.CTkLabel(
-            self.main_frame,
-            text="🎉 Chào mừng bạn!",
-            font=ctk.CTkFont(size=26, weight="bold")
-        )
-        title.pack(pady=20)
+/* Neon Button */
+.btn{
+    padding:15px 40px;
+    font-size:16px;
+    border:none;
+    border-radius:50px;
+    cursor:pointer;
+    background:transparent;
+    color:#00f2ff;
+    border:2px solid #00f2ff;
+    position:relative;
+    transition:0.3s;
+}
 
-        self.clock_label = ctk.CTkLabel(
-            self.main_frame,
-            text="",
-            font=ctk.CTkFont(size=18)
-        )
-        self.clock_label.pack(pady=10)
+.btn:hover{
+    background:#00f2ff;
+    color:#0f0f1a;
+    box-shadow:
+        0 0 10px #00f2ff,
+        0 0 20px #00f2ff,
+        0 0 40px #ff00ff;
+    transform:scale(1.1);
+}
 
-        desc = ctk.CTkLabel(
-            self.main_frame,
-            text="Ứng dụng giao diện hiện đại, màu sắc chuyên nghiệp ✨",
-            font=ctk.CTkFont(size=14)
-        )
-        desc.pack(pady=10)
+/* Floating particles */
+.particle{
+    position:absolute;
+    width:4px;
+    height:4px;
+    background:#00f2ff;
+    border-radius:50%;
+    animation:float 5s infinite linear;
+}
 
-        self.progress = ctk.CTkProgressBar(self.main_frame, width=400)
-        self.progress.set(0)
-        self.progress.pack(pady=20)
+@keyframes float{
+    from{transform:translateY(100vh) scale(0);}
+    to{transform:translateY(-10vh) scale(1);}
+}
 
-        self.start_btn = ctk.CTkButton(
-            self.main_frame,
-            text="🚀 Bắt đầu tải",
-            command=self.start_loading,
-            corner_radius=25,
-            height=40
-        )
-        self.start_btn.pack(pady=10)
+</style>
+</head>
 
-    # ========================
-    # CÔNG CỤ
-    # ========================
-    def create_tool_ui(self):
-        for widget in self.main_frame.winfo_children():
-            widget.destroy()
+<body>
 
-        title = ctk.CTkLabel(
-            self.main_frame,
-            text="⚙️ Công Cụ Tính Tổng",
-            font=ctk.CTkFont(size=22, weight="bold")
-        )
-        title.pack(pady=20)
+<div class="card">
+    <h1>⚡ NEON DARK MODE ⚡</h1>
+    <p>Website cực chất – hiệu ứng phát sáng + chuyển động mượt 🔥</p>
+    <button class="btn" onclick="showAlert()">Click thử đi</button>
+</div>
 
-        self.entry1 = ctk.CTkEntry(self.main_frame, placeholder_text="Nhập số thứ nhất")
-        self.entry1.pack(pady=10)
+<script>
+function showAlert(){
+    alert("🚀 Bạn vừa kích hoạt chế độ Hacker Neon!");
+}
 
-        self.entry2 = ctk.CTkEntry(self.main_frame, placeholder_text="Nhập số thứ hai")
-        self.entry2.pack(pady=10)
+/* Create floating particles */
+for(let i=0;i<30;i++){
+    let p = document.createElement("div");
+    p.classList.add("particle");
+    p.style.left = Math.random()*100 + "vw";
+    p.style.animationDuration = (Math.random()*5+5)+"s";
+    p.style.opacity = Math.random();
+    document.body.appendChild(p);
+}
+</script>
 
-        calc_btn = ctk.CTkButton(
-            self.main_frame,
-            text="🧮 Tính",
-            command=self.calculate,
-            corner_radius=20
-        )
-        calc_btn.pack(pady=10)
+</body>
+</html>
+""")
 
-        self.result_label = ctk.CTkLabel(
-            self.main_frame,
-            text="",
-            font=ctk.CTkFont(size=18, weight="bold")
-        )
-        self.result_label.pack(pady=10)
-
-    # ========================
-    # CHỨC NĂNG
-    # ========================
-    def show_home(self):
-        self.create_home_ui()
-
-    def show_tool(self):
-        self.create_tool_ui()
-
-    def calculate(self):
-        try:
-            num1 = float(self.entry1.get())
-            num2 = float(self.entry2.get())
-            result = num1 + num2
-            self.result_label.configure(text=f"Kết quả: {result}")
-        except:
-            messagebox.showerror("Lỗi", "Vui lòng nhập số hợp lệ!")
-
-    def start_loading(self):
-        threading.Thread(target=self.loading_task).start()
-
-    def loading_task(self):
-        for i in range(101):
-            time.sleep(0.03)
-            self.progress.set(i / 100)
-
-    def update_clock(self):
-        current_time = time.strftime("%H:%M:%S")
-        if hasattr(self, 'clock_label'):
-            self.clock_label.configure(text=f"🕒 {current_time}")
-        self.after(1000, self.update_clock)
-
-# ========================
-# RUN APP
-# ========================
 if __name__ == "__main__":
-    app = ProApp()
-    app.mainloop()
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
+
