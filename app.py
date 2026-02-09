@@ -3,18 +3,22 @@ from flask import Flask, redirect, url_for
 from authlib.integrations.flask_client import OAuth
 
 app = Flask(__name__)
-app.secret_key = "dev_secret_key"
+
+# BẮT BUỘC
+app.secret_key = os.environ.get("SECRET_KEY")
 
 oauth = OAuth(app)
 
 google = oauth.register(
     name="google",
-client_id=os.environ.get("GOOGLE_CLIENT_ID"),
-client_secret=os.environ.get("GOOGLE_CLIENT_SECRET"),
+    client_id=os.environ.get("GOOGLE_CLIENT_ID"),
+    client_secret=os.environ.get("GOOGLE_CLIENT_SECRET"),
+    authorize_url="https://accounts.google.com/o/oauth2/v2/auth",
     access_token_url="https://oauth2.googleapis.com/token",
-    authorize_url="https://accounts.google.com/o/oauth2/auth",
-    api_base_url="https://www.googleapis.com/oauth2/v2/",
-    client_kwargs={"scope": "openid email profile"}
+    api_base_url="https://www.googleapis.com/oauth2/v3/",
+    client_kwargs={
+        "scope": "openid email profile"
+    },
 )
 
 @app.route("/")
@@ -33,5 +37,6 @@ def authorize():
     return f"Xin chào {user['email']}"
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run()
+
 
