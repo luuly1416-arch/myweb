@@ -3,11 +3,8 @@ from flask import Flask, redirect, url_for, session
 from authlib.integrations.flask_client import OAuth
 
 app = Flask(__name__)
+app.secret_key = os.environ.get("SECRET_KEY", "dev-secret")
 
-# Bắt buộc phải có SECRET_KEY
-app.secret_key = os.environ.get("SECRET_KEY")
-
-# Cấu hình OAuth
 oauth = OAuth(app)
 
 google = oauth.register(
@@ -22,7 +19,10 @@ google = oauth.register(
 
 @app.route("/")
 def home():
-    return '<h2>Trang chủ</h2><a href="/login">Đăng nhập bằng Google</a>'
+    return """
+    <h2>Trang chủ</h2>
+    <a href="/login">Đăng nhập bằng Google</a>
+    """
 
 @app.route("/login")
 def login():
@@ -32,15 +32,22 @@ def login():
 
 @app.route("/authorize")
 def authorize():
-    try:
-        token = google.authorize_access_token()
-        user = google.get("userinfo").json()
-        return f"<h2>Xin chào {user['email']}</h2>"
-    except Exception as e:
-        return f"Lỗi: {str(e)}"
+    token = google.authorize_access_token()
+
+    # ✅ LẤY USER TỪ ID TOKEN (KHÔNG GỌI userinfo)
+    user = token.get("userinfo")
+
+    if not user:
+        return "Không lấy được thông tin người dùng"
+
+    return f"""
+    <h2>Đăng nhập thành công 🎉</h2>
+    <p>Email: {user.get('email')}</p>
+    <p>Tên: {user.get('name')}</p>
+    <img src="{user.get('picture')}" />
+    """
 
 if __name__ == "__main__":
     app.run(debug=True)
-
 
 
